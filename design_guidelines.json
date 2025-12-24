@@ -1,0 +1,161 @@
+{
+  "identity": {
+    "name": "E1: The Anti-AI Designer",
+    "mission": "Create a RAG interface that feels like a 'Living Archive'—tactile, precise, and authoritative. Reject the 'Purple/Dark Mode' AI cliché.",
+    "principles": [
+      "Fusion: Swiss Brutalism x Botanical Archive",
+      "Emotion: Trust & Clarity",
+      "Content is King: Typography over decoration",
+      "Negative Space: 3x standard spacing",
+      "Contrast: Sharp black/white with organic textures"
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "heading": {
+        "family": "Playfair Display",
+        "weights": ["400", "700"],
+        "usage": "Main page titles, hero sections, major modal headers. Adds 'Editorial Authority'."
+      },
+      "body": {
+        "family": "Inter",
+        "weights": ["300", "400", "500"],
+        "usage": "General UI, chat messages, form inputs."
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "weights": ["400"],
+        "usage": "Citations, code blocks, timestamps, metadata, document IDs."
+      }
+    },
+    "rules": [
+      "Headings > 32px must use tracking-tight (-0.02em).",
+      "Overlines/Labels must be Uppercase + tracking-widest (0.2em) + text-xs.",
+      "Line height: Tight (1.1) for headings, Relaxed (1.6) for reading content."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "mode": "light",
+      "archetype": "Organic & Earthy (The Archive)",
+      "background": {
+        "default": "#F9F9F7",
+        "paper": "#FFFFFF",
+        "sidebar": "#F0F0ED"
+      },
+      "foreground": {
+        "primary": "#1A1A1A",
+        "secondary": "#5A5A55",
+        "muted": "#A1A19D"
+      },
+      "accent": {
+        "primary": "#CC5500",
+        "secondary": "#E67E22",
+        "name": "Burnt Orange (The Stamp)"
+      },
+      "border": {
+        "default": "#E5E5E0",
+        "strong": "#1A1A1A"
+      },
+      "status": {
+        "success": "#2E7D32",
+        "error": "#D32F2F",
+        "warning": "#ED6C02",
+        "info": "#0288D1"
+      }
+    },
+    "dark_mode_strategy": "The Darkroom. Deep charcoal (#121212) background, not pure black. Text is off-white (#E0E0E0). Accents remain Burnt Orange.",
+    "gradients": "FORBIDDEN. Use solid colors and textures only."
+  },
+  "visual_enhancers": {
+    "radius": {
+      "default": "0px",
+      "buttons": "0px",
+      "inputs": "0px",
+      "cards": "0px",
+      "note": "Strict Swiss Brutalism. No rounded corners unless it's a pill badge."
+    },
+    "shadows": {
+      "card": "none",
+      "hover": "4px 4px 0px 0px #1A1A1A",
+      "dropdown": "8px 8px 0px 0px #1A1A1A"
+    },
+    "textures": {
+      "noise": "Add a subtle SVG noise overlay to the main background to simulate paper grain.",
+      "borders": "Use 1px solid borders for separation. No soft drop shadows for layout."
+    }
+  },
+  "layout": {
+    "grid_system": {
+      "marketing": "Mode A: The Tetris Grid (Asymmetrical)",
+      "dashboard": "Mode B: The Control Room (Dense, 100% height usage)"
+    },
+    "spacing": {
+      "scale": "Generous. Use p-8 or p-12 where others use p-4.",
+      "containers": "Borders must have internal padding (p-6) to prevent text collision."
+    },
+    "sidebar": {
+      "width": "w-72",
+      "style": "Fixed, border-r border-border. High contrast in dark mode."
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all border border-black",
+      "secondary": "bg-transparent border border-input hover:bg-accent hover:text-accent-foreground",
+      "ghost": "hover:bg-accent hover:text-accent-foreground"
+    },
+    "cards": {
+      "style": "bg-card text-card-foreground border border-border p-6",
+      "hover": "hover:border-primary transition-colors"
+    },
+    "inputs": {
+      "style": "rounded-none border-input bg-transparent focus:ring-0 focus:border-primary border-b-2 border-t-0 border-x-0 px-0"
+    },
+    "chat_bubbles": {
+      "user": "bg-transparent border-l-2 border-primary pl-4 text-foreground",
+      "ai": "bg-sidebar p-6 border border-border text-foreground"
+    }
+  },
+  "motion": {
+    "transitions": "transition-all duration-200 ease-out",
+    "micro_interactions": "Buttons lift up and cast a hard shadow on hover.",
+    "page_load": "Staggered fade-in with slight upward drift (10px)."
+  },
+  "media": {
+    "image_urls": {
+      "empty_state_docs": {
+        "url": "https://images.pexels.com/photos/4253063/pexels-photo-4253063.jpeg",
+        "description": "Abstract paper layers for empty document lists.",
+        "category": "texture"
+      },
+      "processing_state": {
+        "url": "https://images.pexels.com/photos/7307673/pexels-photo-7307673.jpeg",
+        "description": "Geometric concrete shapes for processing/loading states.",
+        "category": "abstract"
+      },
+      "login_bg": {
+        "url": "https://images.pexels.com/photos/4253273/pexels-photo-4253273.jpeg",
+        "description": "Minimalist white abstract for login page background.",
+        "category": "background"
+      }
+    },
+    "icons": "Lucide React (default). Use stroke-width={1.5} for elegance."
+  },
+  "instructions_to_main_agent": [
+    "1. INSTALL FONTS: Add '@fontsource/playfair-display', '@fontsource/inter', and '@fontsource/jetbrains-mono' to package.json.",
+    "2. CONFIGURE TAILWIND: Update tailwind.config.js to use the 'Organic & Earthy' color palette and '0px' border radius.",
+    "3. OVERRIDE SHADCN: Modify ui/button.jsx and ui/input.jsx to match the 'Sharp Brutalist' style defined in components section.",
+    "4. LAYOUT: Build the main RAG interface using a Resizable Panel layout (Sidebar | Chat | Document Viewer).",
+    "5. CITATIONS: Display citations as 'Footnotes' style cards at the bottom of AI responses, using JetBrains Mono.",
+    "6. NOISE TEXTURE: Create a global CSS class '.bg-noise' and apply it to the body.",
+    "7. DATA-TESTID: Ensure every interactive element has a data-testid attribute."
+  ],
+  "universal_guidelines": [
+    "Avoid 'AI Slop': No purple gradients, no rounded 'bubble' chats.",
+    "Dark colors look good when used independently without gradients.",
+    "Create depth through z-index and hard borders, not soft shadows.",
+    "Use 'sonner' for toasts.",
+    "Export components as named exports."
+  ]
+}
