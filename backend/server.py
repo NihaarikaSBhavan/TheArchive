@@ -9,13 +9,14 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-import google.generativeai as genai
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 from PyPDF2 import PdfReader
 from docx import Document
 import io
 import re
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import hashlib
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,9 +26,8 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Configure Gemini
-genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-model = genai.GenerativeModel('gemini-2.0-flash')
+# Emergent LLM Key
+EMERGENT_KEY = os.environ['EMERGENT_LLM_KEY']
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -35,6 +35,29 @@ api_router = APIRouter(prefix="/api")
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Simple text-based similarity (TF-IDF style) for embeddings without external API
+def simple_embedding(text: str, dim: int = 256) -> List[float]:
+    """Generate a simple hash-based embedding for text similarity."""
+    # Normalize text
+    text = text.lower().strip()
+    words = re.findall(r'\w+', text)
+    
+    # Create embedding using word hashes
+    embedding = [0.0] * dim
+    for i, word in enumerate(words):
+        # Hash word to get position and value
+        hash_val = int(hashlib.md5(word.encode()).hexdigest(), 16)
+        pos = hash_val % dim
+        value = ((hash_val >> 8) % 1000) / 1000.0
+        embedding[pos] += value * (1.0 / (1 + i * 0.1))  # Position weighting
+    
+    # Normalize
+    norm = sum(x*x for x in embedding) ** 0.5
+    if norm > 0:
+        embedding = [x / norm for x in embedding]
+    
+    return embedding
 
 # In-memory vector store
 class VectorStore:
@@ -136,22 +159,6 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
         start = end - overlap
     return chunks
 
-def get_embedding(text: str) -> List[float]:
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=text,
-        task_type="retrieval_document"
-    )
-    return result['embedding']
-
-def get_query_embedding(text: str) -> List[float]:
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=text,
-        task_type="retrieval_query"
-    )
-    return result['embedding']
-
 # Routes
 @api_router.get("/")
 async def root():
@@ -184,7 +191,8 @@ async def upload_document(file: UploadFile = File(...)):
         if not chunks:
             raise HTTPException(status_code=400, detail="No valid chunks could be created from the document.")
         
-        embeddings = [get_embedding(chunk) for chunk in chunks]
+        # Use simple embedding (no external API needed)
+        embeddings = [simple_embedding(chunk) for chunk in chunks]
         
         # Create document metadata
         doc_id = str(uuid.uuid4())
@@ -247,13 +255,8 @@ async def delete_chat_session(session_id: str):
 async def chat(request: ChatRequest):
     try:
         # Get query embedding and search for relevant chunks
-        try:
-            query_embedding = get_query_embedding(request.message)
-            relevant_chunks = vector_store.search(query_embedding, top_k=5)
-        except Exception as embed_error:
-            logger.error(f"Embedding error: {embed_error}")
-            # Fallback: search without embeddings if quota exceeded
-            relevant_chunks = []
+        query_embedding = simple_embedding(request.message)
+        relevant_chunks = vector_store.search(query_embedding, top_k=5)
         
         # Get chat history
         history = await db.chat_messages.find(
@@ -267,7 +270,7 @@ async def chat(request: ChatRequest):
         seen_docs = set()
         
         for chunk in relevant_chunks:
-            if chunk['similarity'] > 0.3:  # Relevance threshold
+            if chunk['similarity'] > 0.1:  # Lower threshold for simple embeddings
                 context += f"\n---\nSource: {chunk['metadata']['filename']}\n{chunk['chunk']}\n"
                 if chunk['doc_id'] not in seen_docs:
                     citations.append({
@@ -291,9 +294,7 @@ Always cite your sources when using information from the documents.
 Be concise but thorough in your responses."""
         
         if context:
-            prompt = f"""{system_prompt}
-
-Previous conversation:
+            user_prompt = f"""Previous conversation:
 {history_context}
 
 Relevant document excerpts:
@@ -303,34 +304,30 @@ User question: {request.message}
 
 Provide a helpful answer based on the documents above. Reference which documents you're using."""
         else:
-            prompt = f"""{system_prompt}
-
-Previous conversation:
+            user_prompt = f"""Previous conversation:
 {history_context}
 
 Note: No relevant documents found for this query. Please upload documents first or ask about uploaded content.
 
 User question: {request.message}"""
         
-        # Generate response
-        try:
-            response = model.generate_content(prompt)
-            assistant_response = response.text
-        except Exception as gen_error:
-            error_msg = str(gen_error)
-            logger.error(f"Generation error: {error_msg}")
-            if "quota" in error_msg.lower() or "rate" in error_msg.lower():
-                assistant_response = "⚠️ API quota exceeded. The Gemini API key has reached its usage limit. Please check your API key quota at https://aistudio.google.com/ or try again later."
-            else:
-                assistant_response = f"I apologize, but I encountered an error generating a response. Please try again. Error: {error_msg[:100]}"
+        # Generate response using Emergent LLM
+        llm_chat = LlmChat(
+            api_key=EMERGENT_KEY,
+            session_id=f"rag-{request.session_id}-{uuid.uuid4().hex[:8]}",
+            system_message=system_prompt
+        ).with_model("gemini", "gemini-2.5-flash")
+        
+        user_message = UserMessage(text=user_prompt)
+        assistant_response = await llm_chat.send_message(user_message)
         
         # Save messages
-        user_message = ChatMessage(
+        user_message_doc = ChatMessage(
             session_id=request.session_id,
             role="user",
             content=request.message
         )
-        await db.chat_messages.insert_one(user_message.model_dump())
+        await db.chat_messages.insert_one(user_message_doc.model_dump())
         
         assistant_message = ChatMessage(
             session_id=request.session_id,
