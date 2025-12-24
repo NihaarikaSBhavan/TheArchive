@@ -247,8 +247,13 @@ async def delete_chat_session(session_id: str):
 async def chat(request: ChatRequest):
     try:
         # Get query embedding and search for relevant chunks
-        query_embedding = get_query_embedding(request.message)
-        relevant_chunks = vector_store.search(query_embedding, top_k=5)
+        try:
+            query_embedding = get_query_embedding(request.message)
+            relevant_chunks = vector_store.search(query_embedding, top_k=5)
+        except Exception as embed_error:
+            logger.error(f"Embedding error: {embed_error}")
+            # Fallback: search without embeddings if quota exceeded
+            relevant_chunks = []
         
         # Get chat history
         history = await db.chat_messages.find(
@@ -308,8 +313,16 @@ Note: No relevant documents found for this query. Please upload documents first 
 User question: {request.message}"""
         
         # Generate response
-        response = model.generate_content(prompt)
-        assistant_response = response.text
+        try:
+            response = model.generate_content(prompt)
+            assistant_response = response.text
+        except Exception as gen_error:
+            error_msg = str(gen_error)
+            logger.error(f"Generation error: {error_msg}")
+            if "quota" in error_msg.lower() or "rate" in error_msg.lower():
+                assistant_response = "⚠️ API quota exceeded. The Gemini API key has reached its usage limit. Please check your API key quota at https://aistudio.google.com/ or try again later."
+            else:
+                assistant_response = f"I apologize, but I encountered an error generating a response. Please try again. Error: {error_msg[:100]}"
         
         # Save messages
         user_message = ChatMessage(

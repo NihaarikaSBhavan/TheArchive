@@ -440,12 +440,20 @@ const RAGApp = () => {
       });
 
       // Replace temp message and add assistant response
-      fetchMessages(currentSession);
-      fetchSessions(); // Update session title
+      await fetchMessages(currentSession);
+      await fetchSessions(); // Update session title
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to send message');
-      // Remove optimistic message on error
-      setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+      const errorMsg = error.response?.data?.detail || 'Failed to send message. Please try again.';
+      toast.error(errorMsg);
+      console.error('Chat error:', error);
+      // Keep user message but show error as assistant response
+      const errorResponse = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: `❌ Error: ${errorMsg}`,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), tempUserMsg, errorResponse]);
     } finally {
       setIsLoading(false);
     }
